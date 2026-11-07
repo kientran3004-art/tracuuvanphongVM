@@ -46,7 +46,7 @@ main.wrap{display:grid;grid-template-columns:minmax(300px,400px) 1fr;gap:16px;pa
 .st::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:currentColor}
 .st.o{color:var(--open)}.st.c{color:var(--shut)}
 .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
-.detail{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--hh,160px) + 12px)}
+.detail{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--hh,160px) + 12px);max-height:calc(100vh - env(safe-area-inset-top,0px) - var(--hh,160px) - 24px);max-height:calc(100dvh - env(safe-area-inset-top,0px) - var(--hh,160px) - 24px);overflow-y:auto;overscroll-behavior:contain}
 .detail h2{margin:0;font-size:24px;letter-spacing:-.015em;line-height:1.2}
 .detail .kv{color:var(--mute);font-size:14px;margin-bottom:2px}
 .upd{margin:10px 0 0;padding:8px 10px;border-radius:8px;background:var(--warn);color:var(--warnink);font-size:13.5px}
@@ -67,9 +67,17 @@ dd{white-space:pre-wrap;overflow-wrap:anywhere;max-width:70ch}
 .foot{max-width:1180px;margin:0 auto;padding:0 16px 24px;color:var(--mute);font-size:12.5px}
 @media (max-width:820px){
  main.wrap{grid-template-columns:1fr;padding-top:10px}
- .detail{position:fixed;inset:0;z-index:40;border-radius:0;border:0;overflow:auto;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(100%);visibility:hidden;transition:transform .2s}
+ .detail{position:fixed;inset:0;max-height:none;overscroll-behavior:contain;z-index:40;border-radius:0;border:0;overflow:auto;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(100%);visibility:hidden;transition:transform .2s}
  .detail.show{transform:none;visibility:visible}
  .back{display:inline-flex;margin-bottom:10px}
+ /* Bộ lọc khu vực: xuống dòng thay vì vuốt ngang để thấy đủ mọi khu vực */
+ header,header .wrap{display:contents}
+ h1{margin:0;padding:14px 16px 8px}
+ .search{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);padding:6px 16px 10px;border-bottom:1px solid var(--line)}
+ .search button{right:20px;top:10px}
+ .chips{display:grid;grid-template-columns:repeat(4,1fr);overflow:visible;gap:8px;padding:12px 16px 0}
+ .chip{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;white-space:normal;line-height:1.25;padding:7px 4px;font-size:13.5px;min-height:48px;border-radius:12px}
+ .chip em{margin:2px 0 0;font-size:12px}
  dl{grid-template-columns:1fr}dt{padding-bottom:0;border-bottom:0}dd{border-top:0;padding-top:2px}
 }
 @media (prefers-reduced-motion:reduce){.detail{transition:none}}
@@ -103,10 +111,12 @@ function ranges(t){if(/24\s*\/\s*24/.test(t))return"all";const r=[];for(const m 
 function nowMin(){const p=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Ho_Chi_Minh",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date());return+p[0].value%24*60+ +p[2].value}
 function status(o){const r=o.ranges;if(!r)return null;if(r==="all")return{o:1,t:"Mở cả ngày"};const n=nowMin();const h=r.find(x=>n>=x[0]&&n<x[1]);const f=m=>String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(m%60).padStart(2,"0");return h?{o:1,t:"Đang mở · đến "+f(h[1])}:{o:0,t:"Đã đóng cửa"}}
 const KVS=[...new Set(DATA.map(o=>o.kv))];
+const KV_ORDER=["Hà Nội","Thanh Hóa","Hà Tĩnh","Nghệ An","Bắc Nghệ An","Quảng Bình","Đà Nẵng"];
+const KVS_SHOWN=[...KV_ORDER.filter(k=>KVS.includes(k)),...KVS.filter(k=>!KV_ORDER.includes(k))];
 const F={kv:"",giao:false,nhan:false,mo:false,q:""};
 let sel=-1,oldAddr=false;
 function chips(){const mk=(l,k,v,n)=>`<button class="chip" data-k="${k}" data-v="${esc(v)}" aria-pressed="${k==="kv"?F.kv===v:F[k]}">${esc(l)}${n!=null?`<em>${n}</em>`:""}</button>`;
- $("#chips").innerHTML=mk("Tất cả","kv","",DATA.length)+KVS.map(k=>mk(k,"kv",k,DATA.filter(o=>o.kv===k).length)).join("")+'<span class="sep"></span>'+mk("Giao tại nhà","giao","1")+mk("Nhận tại nhà","nhan","1")+mk("Đang mở","mo","1")}
+ $("#chips").innerHTML=mk("Tất cả","kv","",DATA.length)+KVS_SHOWN.map(k=>mk(k,"kv",k,DATA.filter(o=>o.kv===k).length)).join("")}
 $("#chips").onclick=e=>{const b=e.target.closest(".chip");if(!b)return;const k=b.dataset.k;if(k==="kv")F.kv=b.dataset.v;else F[k]=!F[k];render()};
 function find(){const t=norm(F.q).split(/\s+/).filter(Boolean);return DATA.map(o=>{if(F.kv&&o.kv!==F.kv)return null;if(F.giao&&!o.svc[2])return null;if(F.nhan&&!o.svc[3])return null;let st=null;if(F.mo){st=status(o);if(!st||!st.o)return null}
  let sc=0,hit=null;for(const w of t){const dig=w.replace(/\D/g,"");if(o.idx.name.includes(w))sc+=10;else if(o.idx.addr.includes(w))sc+=4;else if(dig.length>=4&&o.idx.tel.includes(dig))sc+=4;else{const i=o.idx.scope.indexOf(w);if(i<0)return null;sc+=1;hit=hit||[i,w.length]}}
